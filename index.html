@@ -1,0 +1,75 @@
+<html>
+<head>
+    <script src="https://alcdn.msauth.net/browser/2.28.3/js/msal-browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-js-sdk.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-client-msalBrowserAuthProvider.js"></script>
+    <script src="./env.js"></script>
+</head>
+<body>
+  <h1>Hello Microsoft 365</h1>
+  <div id="auth"></div>
+  <pre></pre>
+  <script>
+    (() => {
+        const msalConfig = {
+        auth: {
+          clientId: appId
+        }
+      };
+      const msalClient = new msal.PublicClientApplication(msalConfig);
+
+      function login(e) {
+        e.preventDefault();
+        msalClient.loginRedirect();
+      }
+
+      function logout(e) {
+        e.preventDefault();
+        msalClient.logoutRedirect();
+      }
+
+
+      function getGraphClient(account) {
+        const authProvider = new MSGraphAuthCodeMSALBrowserAuthProvider.AuthCodeMSALBrowserAuthenticationProvider(msalClient, {
+          account,
+          scopes: ['user.read'],
+          interactionType: msal.InteractionType.Redirect,
+        });
+
+        return MicrosoftGraph.Client.initWithMiddleware({ authProvider });
+      }
+
+      function loadUserProfile(graphClient) {
+        graphClient
+          .api('/me')
+          .get()
+          .then(res => {
+            document.querySelector('pre').innerHTML = JSON.stringify(res, null, 2);
+          });
+      }
+
+      function render() {
+        msalClient
+          .handleRedirectPromise()
+          .then(response => {
+            const accounts = msalClient.getAllAccounts();
+
+            if (accounts.length === 0) {
+              document.querySelector('#auth').innerHTML = '<button>Login</button>';
+              document.querySelector('#auth button').addEventListener('click', login);
+              document.querySelector('pre').innerHTML = '';
+            }
+            else {
+              document.querySelector('#auth').innerHTML = '<button>Logout</button>';
+              document.querySelector('#auth button').addEventListener('click', logout);
+              const graphClient = getGraphClient(accounts[0]);
+              loadUserProfile(graphClient);
+            }
+          });
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
